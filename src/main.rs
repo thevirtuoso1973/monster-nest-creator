@@ -30,8 +30,13 @@ struct MainState {
 
 fn get_heads(ctx: &mut Context) -> Vec<Head> {
     let head1 = graphics::Image::new(ctx, "/sprites/googly-eyes.png").unwrap();
+    let head2 = graphics::Image::new(ctx, "/sprites/longeyes.png").unwrap();
 
-    return vec![Head::new(head1, 100.0)];
+    return vec![Head::new(head1, 100.0), Head::new(head2, 150.0)];
+}
+
+fn get_human_sprites(ctx: &mut Context) -> Vec<graphics::Image> {
+    Vec::new() // TODO: add humans
 }
 
 impl MainState {
@@ -63,7 +68,7 @@ impl MainState {
             title_img: main_img,
             title_text,
             builder_state: BuilderState::new(get_heads(ctx), Vec::new(), Vec::new(), Vec::new()), // TODO: add the possible body parts
-            attack_state: AttackState::new(),
+            attack_state: AttackState::new(get_human_sprites(ctx)),
             day: 1,
         };
         Ok(s)
@@ -153,7 +158,7 @@ impl event::EventHandler for MainState {
                 KeyCode::Right => self.builder_state.move_option(true),
                 KeyCode::Left => self.builder_state.move_option(false),
                 KeyCode::Return => {
-                    self.builder_state.choose_current();
+                    self.builder_state.choose_current_and_reset();
                     if self.builder_state.is_fully_selected() {
                         let (head, body, arms, legs) = self.builder_state.get_built_monster();
                         self.attack_state.add_monster(head, body, arms, legs);

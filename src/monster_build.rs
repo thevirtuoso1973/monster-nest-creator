@@ -126,30 +126,30 @@ impl BuilderState {
             if next && self.curr_hover < self.possible_heads.len()-1 {
                 self.curr_hover += 1
             } else if !next && self.curr_hover > 0 {
-                self.curr_hover += 1
+                self.curr_hover -= 1
             }
         } else if self.curr_choices[1].is_none() {
             if self.curr_hover < self.possible_bodies.len()-1 {
                 self.curr_hover += 1
             } else if !next && self.curr_hover > 0 {
-                self.curr_hover += 1
+                self.curr_hover -= 1
             }
         } else if self.curr_choices[2].is_none() {
             if self.curr_hover < self.possible_arms.len()-1 {
                 self.curr_hover += 1
             } else if !next && self.curr_hover > 0 {
-                self.curr_hover += 1
+                self.curr_hover -= 1
             }
         } else {
             if self.curr_hover < self.possible_legs.len()-1 {
                 self.curr_hover += 1
             } else if !next && self.curr_hover > 0 {
-                self.curr_hover += 1
+                self.curr_hover -= 1
             }
         }
     }
 
-    pub fn choose_current(&mut self) {
+    pub fn choose_current_and_reset(&mut self) {
         if self.curr_choices[0].is_none() {
             self.curr_choices[0] = Some(self.curr_hover);
         } else if self.curr_choices[1].is_none() {
@@ -159,6 +159,7 @@ impl BuilderState {
         } else {
             self.curr_choices[3] = Some(self.curr_hover);
         }
+        self.curr_hover = 0;
     }
 
     pub fn is_fully_selected(&self) -> bool {
