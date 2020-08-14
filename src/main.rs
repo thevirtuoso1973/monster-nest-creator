@@ -22,6 +22,7 @@ struct MainState {
     font: graphics::Font,
     title: graphics::Text,
     title_img: graphics::Image,
+    title_text: graphics::Text,
     builder_state: BuilderState,
     attack_state: AttackState,
     day: u16,
@@ -45,6 +46,14 @@ impl MainState {
             scale: Some(graphics::Scale { x: 40.0, y: 40.0 }),
         });
         let main_img = graphics::Image::new(ctx, "/sprites/googly-eyes.png")?;
+        let title_text = graphics::Text::new(graphics::TextFragment {
+            text: format!("{}{}{}", "Create your monsters in the day, but beware,\n",
+                          "humans will attack your nest in the night!\n",
+                          "Press enter to continue..."),
+            color: Some(graphics::BLACK),
+            font: Some(font),
+            scale: Some(graphics::Scale { x: 20.0, y: 20.0 }),
+        });
 
         let s = MainState {
             frames: 0,
@@ -52,6 +61,7 @@ impl MainState {
             font,
             title,
             title_img: main_img,
+            title_text,
             builder_state: BuilderState::new(get_heads(ctx), Vec::new(), Vec::new(), Vec::new()), // TODO: add the possible body parts
             attack_state: AttackState::new(),
             day: 1,
@@ -86,6 +96,12 @@ impl event::EventHandler for MainState {
                     y: (10.0),
                 };
                 graphics::draw(ctx, &self.title, (title_dest_point,))?;
+
+                let title_text_dest_point = mint::Point2 {
+                    x: (SCREEN_SIZE.0 / 2.0 - 140.0),
+                    y: (SCREEN_SIZE.1 / 2.0),
+                };
+                graphics::draw(ctx, &self.title_text, (title_text_dest_point,))?;
 
                 let scale_vec = [2.0, 2.0];
                 let img_dest_point = mint::Point2 {
