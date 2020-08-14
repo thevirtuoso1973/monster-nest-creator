@@ -6,6 +6,7 @@ use ggez::{Context, GameResult};
 use std::env;
 use std::path;
 use monster_nest_creator::monster_build::{ Head, Body, Arms, Legs, BuilderState };
+use monster_nest_creator::monster::AttackState;
 use monster_nest_creator::SCREEN_SIZE;
 
 enum ScreenState {
@@ -22,6 +23,7 @@ struct MainState {
     title: graphics::Text,
     title_img: graphics::Image,
     builder_state: BuilderState,
+    attack_state: AttackState,
     day: u16,
 }
 
@@ -51,6 +53,7 @@ impl MainState {
             title,
             title_img: main_img,
             builder_state: BuilderState::new(get_heads(ctx), Vec::new(), Vec::new(), Vec::new()), // TODO: add the possible body parts
+            attack_state: AttackState::new(),
             day: 1,
         };
         Ok(s)
@@ -136,6 +139,8 @@ impl event::EventHandler for MainState {
                 KeyCode::Return => {
                     self.builder_state.choose_current();
                     if self.builder_state.is_fully_selected() {
+                        let (head, body, arms, legs) = self.builder_state.get_built_monster();
+                        self.attack_state.add_monster(head, body, arms, legs);
                         self.switch_state(ScreenState::NightAttack);
                     }
                 }

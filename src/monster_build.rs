@@ -6,6 +6,7 @@ trait Sprite {
     fn get_image(&self) -> &graphics::Image;
 }
 
+#[derive(Debug, Clone)]
 pub struct Head {
     sprite: graphics::Image,
     sight_range: f32,
@@ -21,6 +22,7 @@ impl Sprite for Head {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Body {
     sprite: graphics::Image,
     health: f32,
@@ -36,6 +38,7 @@ impl Sprite for Body {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Arms {
     sprite: graphics::Image,
     damage: f32,
@@ -51,6 +54,7 @@ impl Sprite for Arms {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Legs {
     sprite: graphics::Image,
     speed: f32,
@@ -159,5 +163,15 @@ impl BuilderState {
 
     pub fn is_fully_selected(&self) -> bool {
         return self.curr_choices[3].is_some();
+    }
+
+    /// only should be called once you know it's built!
+    pub fn get_built_monster(&self) -> (Head, Body, Arms, Legs) {
+        (
+            self.possible_heads[self.curr_choices[0].unwrap()].clone(),
+            self.possible_bodies[self.curr_choices[1].unwrap()].clone(),
+            self.possible_arms[self.curr_choices[2].unwrap()].clone(),
+            self.possible_legs[self.curr_choices[3].unwrap()].clone(),
+        )
     }
 }
