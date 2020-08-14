@@ -1,27 +1,55 @@
 use ggez;
 
-use ggez::event;
+use ggez::event::{self, KeyCode, KeyMods};
 use ggez::graphics;
 use ggez::{Context, GameResult};
 use std::env;
 use std::path;
 
+const SCREEN_SIZE: (f32, f32) = (1366.0, 768.0);
 
-// First we make a structure to contain the game's state
+enum ScreenState {
+    MainMenu,
+    MonsterCreation, // player building their monster
+    NightAttack,     // humans attack the 'nest'
+}
+
+// contains the game's state
 struct MainState {
     frames: usize,
-    text: graphics::Text,
+    state: ScreenState,
+    font: graphics::Font,
+    title: graphics::Text,
+    title_img: graphics::Image,
+    day: u16,
 }
 
 impl MainState {
     fn new(ctx: &mut Context) -> GameResult<MainState> {
         // The ttf file will be in your resources directory. Later, we
         // will mount that directory so we can omit it in the path here.
-        let font = graphics::Font::new(ctx, "/Roboto/Roboto-Regular.ttf")?;
-        let text = graphics::Text::new(("Monster Nest Creator", font, 48.0));
+        let font = graphics::Font::new(ctx, "/Roboto/Roboto-Regular.ttf")?; // REVIEW: replace with scary font?
+        let title = graphics::Text::new(graphics::TextFragment {
+            text: "Monster Nest Creator".to_string(),
+            color: Some(graphics::BLACK),
+            font: Some(font),
+            scale: Some(graphics::Scale { x: 40.0, y: 40.0 }),
+        });
+        let main_img = graphics::Image::new(ctx, "/sprites/googly-eyes.png")?;
 
-        let s = MainState { frames: 0, text };
+        let s = MainState {
+            frames: 0,
+            state: ScreenState::MainMenu,
+            font,
+            title,
+            title_img: main_img,
+            day: 1,
+        };
         Ok(s)
+    }
+
+    fn switch_state(&mut self, new_state: ScreenState) {
+        self.state = new_state;
     }
 }
 
@@ -36,15 +64,39 @@ impl event::EventHandler for MainState {
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        graphics::clear(ctx, [0.1, 0.2, 0.3, 1.0].into());
+        graphics::clear(ctx, graphics::WHITE);
 
         // Drawables are drawn from their top-left corner.
-        let offset = self.frames as f32 / 10.0;
-        let dest_point = mint::Point2 {
-            x: (offset),
-            y: (offset),
-        };
-        graphics::draw(ctx, &self.text, (dest_point,))?;
+        match self.state {
+            ScreenState::MainMenu => {
+                let title_dest_point = mint::Point2 {
+                    x: (SCREEN_SIZE.0 / 2.0 - 140.0),
+                    y: (10.0),
+                };
+                graphics::draw(ctx, &self.title, (title_dest_point,))?;
+
+                let scale_vec = [2.0, 2.0];
+                let img_dest_point = mint::Point2 {
+                    x: (SCREEN_SIZE.0 - (self.title_img.width() as f32*scale_vec[0])),
+                    y: (SCREEN_SIZE.1 - self.title_img.height() as f32*scale_vec[1]),
+                };
+                graphics::draw(ctx, &self.title_img, graphics::DrawParam::from((img_dest_point,)).scale(scale_vec))?;
+            }
+            ScreenState::MonsterCreation => {
+                let day_dest_point = mint::Point2 { x: (1.0), y: (1.0) };
+                graphics::draw(
+                    ctx,
+                    &graphics::Text::new(graphics::TextFragment {
+                        text: format!("Day {}", self.day),
+                        color: Some(graphics::BLACK),
+                        font: Some(self.font),
+                        scale: Some(graphics::Scale { x: 40.0, y: 40.0 }),
+                    }),
+                    (day_dest_point,),
+                )?;
+            }
+            ScreenState::NightAttack => {}
+        }
         graphics::present(ctx)?;
 
         self.frames += 1;
@@ -53,6 +105,27 @@ impl event::EventHandler for MainState {
         }
 
         Ok(())
+    }
+
+    fn key_down_event(
+        &mut self,
+        ctx: &mut Context,
+        keycode: KeyCode,
+        _keymod: KeyMods,
+        _repeat: bool,
+    ) {
+        match self.state {
+            ScreenState::MainMenu => match keycode {
+                KeyCode::Return => self.switch_state(ScreenState::MonsterCreation),
+                KeyCode::Escape => event::quit(ctx),
+                _ => (),
+            },
+            ScreenState::MonsterCreation => match keycode {
+                KeyCode::Escape => event::quit(ctx),
+                _ => (),
+            },
+            ScreenState::NightAttack => {}
+        }
     }
 }
 
@@ -75,7 +148,10 @@ pub fn main() -> GameResult {
         path::PathBuf::from("./resources")
     };
 
-    let cb = ggez::ContextBuilder::new("monster_nest_creator", "Chris").add_resource_path(resource_dir);
+    let cb = ggez::ContextBuilder::new("monster_nest_creator", "Chris")
+        .add_resource_path(resource_dir)
+        .window_setup(ggez::conf::WindowSetup::default().title("Monster Nest Creator"))
+        .window_mode(ggez::conf::WindowMode::default().dimensions(SCREEN_SIZE.0, SCREEN_SIZE.1));
     let (ctx, event_loop) = &mut cb.build()?;
 
     let state = &mut MainState::new(ctx)?;
