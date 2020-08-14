@@ -5,6 +5,7 @@ use ggez::graphics;
 use ggez::{Context, GameResult};
 use std::env;
 use std::path;
+use monster_nest_creator::monster_build::BuilderState;
 
 const SCREEN_SIZE: (f32, f32) = (1366.0, 768.0);
 
@@ -21,6 +22,7 @@ struct MainState {
     font: graphics::Font,
     title: graphics::Text,
     title_img: graphics::Image,
+    builder_state: BuilderState,
     day: u16,
 }
 
@@ -43,6 +45,7 @@ impl MainState {
             font,
             title,
             title_img: main_img,
+            builder_state: BuilderState::new(Vec::new(), Vec::new(), Vec::new(), Vec::new()), // TODO: add the possible body parts
             day: 1,
         };
         Ok(s)
