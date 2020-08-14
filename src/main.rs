@@ -5,9 +5,8 @@ use ggez::graphics;
 use ggez::{Context, GameResult};
 use std::env;
 use std::path;
-use monster_nest_creator::monster_build::BuilderState;
-
-const SCREEN_SIZE: (f32, f32) = (1366.0, 768.0);
+use monster_nest_creator::monster_build::{ Head, Body, Arms, Legs, BuilderState };
+use monster_nest_creator::SCREEN_SIZE;
 
 enum ScreenState {
     MainMenu,
@@ -24,6 +23,12 @@ struct MainState {
     title_img: graphics::Image,
     builder_state: BuilderState,
     day: u16,
+}
+
+fn get_heads(ctx: &mut Context) -> Vec<Head> {
+    let head1 = graphics::Image::new(ctx, "/sprites/googly-eyes.png").unwrap();
+
+    return vec![Head::new(head1, 100.0)];
 }
 
 impl MainState {
@@ -45,11 +50,12 @@ impl MainState {
             font,
             title,
             title_img: main_img,
-            builder_state: BuilderState::new(Vec::new(), Vec::new(), Vec::new(), Vec::new()), // TODO: add the possible body parts
+            builder_state: BuilderState::new(get_heads(ctx), Vec::new(), Vec::new(), Vec::new()), // TODO: add the possible body parts
             day: 1,
         };
         Ok(s)
     }
+
 
     fn switch_state(&mut self, new_state: ScreenState) {
         self.state = new_state;
@@ -97,6 +103,7 @@ impl event::EventHandler for MainState {
                     }),
                     (day_dest_point,),
                 )?;
+                self.builder_state.draw(ctx)?;
             }
             ScreenState::NightAttack => {}
         }
@@ -124,10 +131,21 @@ impl event::EventHandler for MainState {
                 _ => (),
             },
             ScreenState::MonsterCreation => match keycode {
+                KeyCode::Right => self.builder_state.move_option(true),
+                KeyCode::Left => self.builder_state.move_option(false),
+                KeyCode::Return => {
+                    self.builder_state.choose_current();
+                    if self.builder_state.is_fully_selected() {
+                        self.switch_state(ScreenState::NightAttack);
+                    }
+                }
                 KeyCode::Escape => event::quit(ctx),
                 _ => (),
             },
-            ScreenState::NightAttack => {}
+            ScreenState::NightAttack => match keycode {
+                KeyCode::Escape => event::quit(ctx),
+                _ => (),
+            }
         }
     }
 }
