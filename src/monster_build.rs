@@ -30,6 +30,8 @@ pub struct Body {
 
 impl Body {
     pub fn new(sprite: graphics::Image, health: f32) -> Self { Self { sprite, health } }
+
+    pub fn get_health(&self) -> f32 { self.health }
 }
 
 impl Sprite for Body {
@@ -152,7 +154,6 @@ impl BuilderState {
             let leg = &self.possible_legs[self.curr_choices[3].unwrap()];
             graphics::draw(ctx, leg.get_image(), (leg_point,))?;
         }
-        // TODO draw the other arm
         Ok(())
     }
 

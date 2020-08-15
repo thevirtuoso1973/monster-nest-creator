@@ -1,6 +1,7 @@
 use crate::monster_build::{Sprite, Head, Body, Arms, Legs};
 use crate::SCREEN_SIZE;
 use ggez::{Context, graphics::{self, Image}, GameResult};
+use std::f32::consts::PI;
 
 // NOTE: I'm prob gonna assume that the game world is also just 800x600
 
@@ -10,10 +11,14 @@ pub struct Monster {
     arms: Arms,
     legs: Legs,
     pos: mint::Point2<f32>,
+    hp: f32,
 }
 
 impl Monster {
-    pub fn new(head: Head, body: Body, arms: Arms, legs: Legs, pos: mint::Point2<f32>) -> Self { Self { head, body, arms, legs, pos } }
+    pub fn new(head: Head, body: Body, arms: Arms, legs: Legs, pos: mint::Point2<f32>) -> Self {
+        let hp = body.get_health();
+        Self { head, body, arms, legs, pos, hp }
+    }
 }
 
 pub struct Human {
@@ -23,10 +28,19 @@ pub struct Human {
     speed: f32,
     range: f32,
     hp: f32,
+    damage: f32,
 }
 
 impl Human {
-    pub fn new(sprite_index: usize, tilt: f32, pos: mint::Point2<f32>, speed: f32, range: f32, hp: f32) -> Self { Self { sprite_index, tilt, pos, speed, range, hp } }
+    pub fn new(sprite_index: usize, tilt: f32, pos: mint::Point2<f32>, speed: f32, range: f32, hp: f32, damage: f32) -> Self { Self { sprite_index, tilt, pos, speed, range, hp, damage } }
+
+    pub fn look_towards(&mut self, target_tilt: f32) {
+        if target_tilt > self.tilt {
+            self.tilt = target_tilt.min(self.tilt+(PI/4.0));
+        } else if target_tilt < self.tilt {
+            self.tilt = target_tilt.max(self.tilt-(PI/4.0));
+        }
+    }
 }
 
 
@@ -53,7 +67,7 @@ impl AttackState {
         self.humans.clear();
         for i in 0..day {
             let new_pos = mint::Point2 { x: SCREEN_SIZE.0-32.0, y: SCREEN_SIZE.1-(64.0*(i as f32+1.0)) };
-            self.humans.push(Human::new(0, 0.0, new_pos, 10.0, 10.0, 10.0));
+            self.humans.push(Human::new(0, 0.0, new_pos, 10.0, 10.0, 10.0, 10.0));
         }
     }
 
@@ -102,6 +116,57 @@ impl AttackState {
     }
 
     pub fn update_state(&mut self, ctx: &mut Context) {
-        // TODO: Update monsters & update humans
+        for i in 0..self.humans.len() {
+            if let Some(shooting_target_index) = self.try_shoot(&self.humans[i]) {
+                self.monsters[shooting_target_index].hp -= self.humans[i].damage;
+            }
+            let (target, distance) = self.get_closest_monster(&self.humans[i]);
+            let acute_tilt = get_acute_tilt(target.pos, self.humans[i].pos);
+            let actual_tilt = if target.pos.x >= self.humans[i].pos.x && target.pos.y >= self.humans[i].pos.y {
+                PI+acute_tilt
+            } else if target.pos.x >= self.humans[i].pos.x {
+                (PI/2.0)+((PI/2.0)-acute_tilt)
+            } else if target.pos.x < self.humans[i].pos.x && target.pos.y < self.humans[i].pos.y {
+                acute_tilt
+            } else {
+                PI+(PI/2.0)+((PI/2.0)-acute_tilt)
+            };
+
+            self.humans[i].look_towards(actual_tilt); // update tilt
+
+            if distance >= self.humans[i].range { // move if not in range
+                // TODO: move toward target
+            }
+        }
+        // TODO: update monsters:
     }
+
+    /// Just throws out a ray and hits any monster it can.
+    /// Returns the index of the monster.
+    fn try_shoot(&self, human: &Human) -> Option<usize> {
+        // TODO: implement ray casting
+        println!("Pew! Pew!");
+        None
+    }
+
+    fn get_closest_monster(&self, human: &Human) -> (&Monster, f32) {
+        let mut curr_monster = &self.monsters[0];
+        let mut curr_min = get_euclid_distance(human.pos, curr_monster.pos);
+        for monster in &(self.monsters[1..]) {
+            let temp = get_euclid_distance(human.pos, monster.pos);
+            if temp < curr_min {
+                curr_min = temp;
+                curr_monster = monster
+            }
+        }
+        (curr_monster, curr_min)
+    }
+}
+
+fn get_acute_tilt(point1: mint::Point2<f32>, point2: mint::Point2<f32>) -> f32 {
+    ((point1.y-point2.y).abs()/(point1.x-point2.x).abs()).atan()
+}
+
+fn get_euclid_distance(point1: mint::Point2<f32>, point2: mint::Point2<f32>) -> f32 {
+    (point1.x-point2.x).hypot(point1.y-point2.y)
 }
