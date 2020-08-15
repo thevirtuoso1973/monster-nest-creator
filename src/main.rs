@@ -32,29 +32,32 @@ fn get_heads(ctx: &mut Context) -> Vec<Head> {
     let head1 = graphics::Image::new(ctx, "/sprites/googly-eyes.png").unwrap();
     let head2 = graphics::Image::new(ctx, "/sprites/longeyes.png").unwrap();
 
-    return vec![Head::new(head1, 100.0), Head::new(head2, 150.0)];
+    vec![Head::new(head1, 100.0), Head::new(head2, 150.0)]
 }
 
 fn get_bodies(ctx: &mut Context) -> Vec<Body> {
     let body1 = graphics::Image::new(ctx, "/sprites/round-body.png").unwrap();
 
-    return vec![Body::new(body1, 100.0)];
+    vec![Body::new(body1, 100.0)]
 }
 
 fn get_arms(ctx: &mut Context) -> Vec<Arms> {
     let arms1 = graphics::Image::new(ctx, "/sprites/small-arms.png").unwrap();
 
-    return vec![Arms::new(arms1, 10.0)];
+    vec![Arms::new(arms1, 10.0)]
 }
 
 fn get_legs(ctx: &mut Context) -> Vec<Legs> {
     let legs1 = graphics::Image::new(ctx, "/sprites/blob-legs.png").unwrap();
 
-    return vec![Legs::new(legs1, 20.0)];
+    vec![Legs::new(legs1, 20.0)]
 }
 
 fn get_human_sprites(ctx: &mut Context) -> Vec<graphics::Image> {
-    Vec::new() // TODO: add humans
+    let temp = graphics::Image::solid(ctx, 32,
+                                      graphics::Color::from_rgb(128, 0, 0)).unwrap();
+
+    vec![temp]
 }
 
 impl MainState {
@@ -109,11 +112,11 @@ impl event::EventHandler for MainState {
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        graphics::clear(ctx, graphics::WHITE);
-
         // Drawables are drawn from their top-left corner.
         match self.state {
             ScreenState::MainMenu => {
+                graphics::clear(ctx, graphics::WHITE);
+
                 let title_dest_point = mint::Point2 {
                     x: (SCREEN_SIZE.0 / 2.0 - 140.0),
                     y: (10.0),
@@ -134,6 +137,8 @@ impl event::EventHandler for MainState {
                 graphics::draw(ctx, &self.title_img, graphics::DrawParam::from((img_dest_point,)).scale(scale_vec))?;
             }
             ScreenState::MonsterCreation => {
+                graphics::clear(ctx, graphics::WHITE);
+
                 let day_dest_point = mint::Point2 { x: (1.0), y: (1.0) };
                 graphics::draw(
                     ctx,
@@ -147,7 +152,11 @@ impl event::EventHandler for MainState {
                 )?;
                 self.builder_state.draw(ctx)?;
             }
-            ScreenState::NightAttack => {}
+            ScreenState::NightAttack => {
+                graphics::clear(ctx, graphics::Color::from_rgb(166, 166, 166));
+
+                self.attack_state.draw(ctx)?;
+            }
         }
         graphics::present(ctx)?;
 
@@ -180,6 +189,8 @@ impl event::EventHandler for MainState {
                     if self.builder_state.is_fully_selected() {
                         let (head, body, arms, legs) = self.builder_state.get_built_monster();
                         self.attack_state.add_monster(head, body, arms, legs);
+
+                        self.attack_state.generate_humans(self.day);
                         self.switch_state(ScreenState::NightAttack);
                     }
                 }

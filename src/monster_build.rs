@@ -2,7 +2,7 @@ use ggez::graphics;
 use ggez::{Context, GameResult};
 use crate::SCREEN_SIZE;
 
-trait Sprite {
+pub trait Sprite {
     fn get_image(&self) -> &graphics::Image;
 }
 
@@ -111,6 +111,10 @@ impl BuilderState {
             let arm_point = mint::Point2 { x: head_point.x-64.0, y: head_point.y+64.0 };
             let arm = &self.possible_arms[self.curr_hover];
             graphics::draw(ctx, arm.get_image(), (arm_point,))?;
+
+            let other_arm_point = mint::Point2 { x: head_point.x+128.0, y: head_point.y+64.0 };
+            graphics::draw(ctx, arm.get_image(), graphics::DrawParam::from((other_arm_point,)).scale([-1.0,1.0]))?;
+
         } else {
             self.draw_options(&self.possible_legs, ctx)?;
 
@@ -139,6 +143,9 @@ impl BuilderState {
             let arm_point = mint::Point2 { x: head_point.x-64.0, y: head_point.y+64.0 };
             let arm = &self.possible_arms[self.curr_choices[2].unwrap()];
             graphics::draw(ctx, arm.get_image(), (arm_point,))?;
+
+            let other_arm_point = mint::Point2 { x: head_point.x+128.0, y: head_point.y+64.0 };
+            graphics::draw(ctx, arm.get_image(), graphics::DrawParam::from((other_arm_point,)).scale([-1.0,1.0]))?;
         }
         if self.curr_choices[3].is_some() {
             let leg_point = mint::Point2 { x: head_point.x, y: head_point.y+(64.0*2.0) };
