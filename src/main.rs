@@ -71,7 +71,7 @@ impl MainState {
         let main_img = graphics::Image::new(ctx, "/sprites/googly-eyes.png")?;
         let title_text = graphics::Text::new(graphics::TextFragment {
             text: format!("{}{}{}", "Create your monsters in the day, but beware,\n",
-                          "humans will attack your nest in the night!\n",
+                          "humans will attack your nest in the night!\n\n",
                           "Press enter to continue..."),
             color: Some(graphics::BLACK),
             font: Some(font),

@@ -92,22 +92,64 @@ impl BuilderState {
     }
 
     pub fn draw(&self, ctx: &mut Context) -> GameResult {
+        let head_point = mint::Point2 { x: (SCREEN_SIZE.0 / 2.0), y: (10.0) };
         if self.curr_choices[0].is_none() {
             self.draw_options(&self.possible_heads, ctx)?;
+
+            let head = &self.possible_heads[self.curr_hover];
+            graphics::draw(ctx, head.get_image(), (head_point,))?;
         } else if self.curr_choices[1].is_none() {
             self.draw_options(&self.possible_bodies, ctx)?;
+
+            let body_point = mint::Point2 { x: head_point.x, y: (head_point.y+64.0) };
+            let body = &self.possible_bodies[self.curr_hover];
+            graphics::draw(ctx, body.get_image(), (body_point,))?;
         } else if self.curr_choices[2].is_none() {
             self.draw_options(&self.possible_arms, ctx)?;
+
+
+            let arm_point = mint::Point2 { x: head_point.x-64.0, y: head_point.y+64.0 };
+            let arm = &self.possible_arms[self.curr_hover];
+            graphics::draw(ctx, arm.get_image(), (arm_point,))?;
         } else {
             self.draw_options(&self.possible_legs, ctx)?;
+
+            let leg_point = mint::Point2 { x: head_point.x, y: head_point.y+(64.0*2.0) };
+            let leg = &self.possible_legs[self.curr_hover];
+            graphics::draw(ctx, leg.get_image(), (leg_point,))?;
         }
 
-        // TODO: draw the curr monster
+        self.draw_choices(ctx)?;
+
+        Ok(())
+    }
+
+    fn draw_choices(&self, ctx: &mut Context) -> GameResult {
+        let head_point = mint::Point2 { x: (SCREEN_SIZE.0 / 2.0), y: (10.0) };
+        if self.curr_choices[0].is_some() {
+            let head = &self.possible_heads[self.curr_choices[0].unwrap()];
+            graphics::draw(ctx, head.get_image(), (head_point,))?;
+        }
+        if self.curr_choices[1].is_some() {
+            let body_point = mint::Point2 { x: head_point.x, y: (head_point.y+64.0) };
+            let body = &self.possible_bodies[self.curr_choices[1].unwrap()];
+            graphics::draw(ctx, body.get_image(), (body_point,))?;
+        }
+        if self.curr_choices[2].is_some() {
+            let arm_point = mint::Point2 { x: head_point.x-64.0, y: head_point.y+64.0 };
+            let arm = &self.possible_arms[self.curr_choices[2].unwrap()];
+            graphics::draw(ctx, arm.get_image(), (arm_point,))?;
+        }
+        if self.curr_choices[3].is_some() {
+            let leg_point = mint::Point2 { x: head_point.x, y: head_point.y+(64.0*2.0) };
+            let leg = &self.possible_legs[self.curr_choices[3].unwrap()];
+            graphics::draw(ctx, leg.get_image(), (leg_point,))?;
+        }
+        // TODO draw the other arm
         Ok(())
     }
 
     fn draw_options<T: Sprite>(&self, parts: &Vec<T>, ctx: &mut Context) -> GameResult {
-        // TODO: test moving the highlight
         for (i, part) in parts.iter().enumerate() {
             let img = part.get_image();
             let new_point = mint::Point2 { x: i as f32*64.0, y: SCREEN_SIZE.1-64.0 };
