@@ -2,11 +2,11 @@ use ggez;
 
 use ggez::event::{self, KeyCode, KeyMods};
 use ggez::graphics;
-use ggez::{Context, GameResult};
+use ggez::{audio, Context, GameResult};
 use monster_nest_creator::monster::AttackState;
-use monster_nest_creator::monster_build::{Arms, Body, BuilderState, Head, Legs};
-use monster_nest_creator::SCREEN_SIZE;
+use monster_nest_creator::monster_build::BuilderState;
 use monster_nest_creator::sprite_loader::*;
+use monster_nest_creator::SCREEN_SIZE;
 use std::env;
 use std::path;
 
@@ -37,7 +37,7 @@ impl MainState {
         // will mount that directory so we can omit it in the path here.
         let font = graphics::Font::new(ctx, "/Roboto/Roboto-Regular.ttf")?; // REVIEW: replace with scary font?
         let title = graphics::Text::new(graphics::TextFragment {
-            text: "Monster Nest Creator".to_string(),
+            text: "Monster Nest".to_string(),
             color: Some(graphics::BLACK),
             font: Some(font),
             scale: Some(graphics::Scale { x: 40.0, y: 40.0 }),
@@ -45,15 +45,22 @@ impl MainState {
         let main_img = graphics::Image::new(ctx, "/sprites/googly-eyes.png")?;
         let title_text = graphics::Text::new(graphics::TextFragment {
             text: format!(
-                "{}{}{}",
+                "{}{}{}{}",
                 "Create your monsters in the day, but beware,\n",
                 "humans will attack your nest in the night!\n\n",
-                "Press enter to continue..."
+                "Press enter to continue...\n\n",
+                "(Note: there is audio in this game)"
             ),
             color: Some(graphics::BLACK),
             font: Some(font),
             scale: Some(graphics::Scale { x: 20.0, y: 20.0 }),
         });
+        let gunshot_sound = audio::Source::new(ctx, "/sounds/9_mm_gunshot.mp3")?;
+        let hit_sounds = vec![
+            audio::Source::new(ctx, "/sounds/hit01.mp3.flac")?,
+            audio::Source::new(ctx, "/sounds/hit02.mp3.flac")?,
+            audio::Source::new(ctx, "/sounds/hit03.mp3.flac")?,
+        ];
 
         let s = MainState {
             frames: 0,
@@ -68,7 +75,7 @@ impl MainState {
                 get_arms(ctx),
                 get_legs(ctx),
             ),
-            attack_state: AttackState::new(get_human_sprites(ctx)),
+            attack_state: AttackState::new(get_human_sprites(ctx), gunshot_sound, hit_sounds),
             day: 1,
             won: false,
         };
@@ -95,7 +102,8 @@ impl event::EventHandler for MainState {
                         self.switch_state(ScreenState::EndGame);
                     } else if !check_win {
                         self.switch_state(ScreenState::EndGame);
-                    } else { // move on to next day
+                    } else {
+                        // move on to next day
                         self.day += 1;
                         self.switch_state(ScreenState::MonsterCreation);
                     }
@@ -220,8 +228,10 @@ impl event::EventHandler for MainState {
                 _ => (),
             },
             ScreenState::NightAttack => match keycode {
-                KeyCode::Down => self.attack_state.move_monster_down(),
-                KeyCode::Right => self.attack_state.move_monster_right(),
+                // KeyCode::Down => self.attack_state.move_monster_down(),
+                // KeyCode::Up => self.attack_state.move_monster_up(),
+                // KeyCode::Left => self.attack_state.move_monster_left(),
+                // KeyCode::Right => self.attack_state.move_monster_right(),
                 KeyCode::Escape => event::quit(ctx),
                 _ => (),
             },
@@ -254,7 +264,11 @@ pub fn main() -> GameResult {
 
     let cb = ggez::ContextBuilder::new("monster_nest_creator", "Chris")
         .add_resource_path(resource_dir)
-        .window_setup(ggez::conf::WindowSetup::default().title("Monster Nest Creator"))
+        .window_setup(
+            ggez::conf::WindowSetup::default()
+                .title("Monster Nest")
+                .vsync(true),
+        )
         .window_mode(ggez::conf::WindowMode::default().dimensions(SCREEN_SIZE.0, SCREEN_SIZE.1));
     let (ctx, event_loop) = &mut cb.build()?;
 

@@ -1,9 +1,12 @@
 use crate::monster_build::{Arms, Body, Head, Legs, Sprite};
 use crate::SCREEN_SIZE;
+use audio::SoundSource;
 use ggez::{
+    audio,
     graphics::{self, Image},
     Context, GameResult,
 };
+use rand::Rng;
 use std::f32::consts::PI;
 
 // NOTE: I'm prob gonna assume that the game world is also just 800x600
@@ -15,6 +18,7 @@ pub struct Monster {
     legs: Legs,
     pos: mint::Point2<f32>,
     hp: f32,
+    cooldown: u32,
 }
 
 impl Monster {
@@ -27,6 +31,7 @@ impl Monster {
             legs,
             pos,
             hp,
+            cooldown: 0,
         }
     }
 }
@@ -39,12 +44,13 @@ pub struct Human {
     range: f32,
     hp: f32,
     damage: f32,
+    // the number of frames left until attack is available (game runs at ~70fps):
+    cooldown: u32,
 }
 
 impl Human {
     pub fn new(
         sprite_index: usize,
-        tilt: f32,
         pos: mint::Point2<f32>,
         speed: f32,
         range: f32,
@@ -53,12 +59,13 @@ impl Human {
     ) -> Self {
         Self {
             sprite_index,
-            tilt,
+            tilt: 0.0,
             pos,
             speed,
             range,
             hp,
             damage,
+            cooldown: 0,
         }
     }
 
@@ -82,15 +89,34 @@ pub struct AttackState {
     human_sprites: Vec<Image>,
     monsters: Vec<Monster>,
     humans: Vec<Human>,
+    gunshot_sound: audio::Source,
+    hit_sounds: Vec<audio::Source>,
+    thread_rng: rand::rngs::ThreadRng,
 }
 
 impl AttackState {
-    pub fn new(human_sprites: Vec<Image>) -> Self {
+    pub fn new(
+        human_sprites: Vec<Image>,
+        gunshot_sound: audio::Source,
+        hit_sounds: Vec<audio::Source>,
+    ) -> Self {
         Self {
             human_sprites,
             monsters: Vec::new(),
             humans: Vec::new(),
+            gunshot_sound,
+            hit_sounds,
+            thread_rng: rand::thread_rng(),
         }
+    }
+
+    pub fn move_monster_left(&mut self) {
+        // NOTE: for debugging
+        let monster = &mut self.monsters[0];
+        monster.pos = mint::Point2 {
+            x: monster.pos.x - monster.legs.get_speed(),
+            y: monster.pos.y,
+        };
     }
 
     pub fn move_monster_right(&mut self) {
@@ -108,6 +134,15 @@ impl AttackState {
         monster.pos = mint::Point2 {
             x: monster.pos.x,
             y: monster.pos.y + monster.legs.get_speed(),
+        };
+    }
+
+    pub fn move_monster_up(&mut self) {
+        // NOTE: for debugging
+        let monster = &mut self.monsters[0];
+        monster.pos = mint::Point2 {
+            x: monster.pos.x,
+            y: monster.pos.y - monster.legs.get_speed(),
         };
     }
 
@@ -132,7 +167,7 @@ impl AttackState {
                 y: SCREEN_SIZE.1 - (64.0 * (i as f32 + 1.0)),
             };
             self.humans
-                .push(Human::new(0, 0.0, new_pos, 2.0, 100.0, 10.0, 10.0)); // TODO actually randomise this
+                .push(Human::new(0, new_pos, 2.0, 100.0, 50.0, 0.0)); // TODO actually randomise this
         }
     }
 
@@ -200,27 +235,41 @@ impl AttackState {
         Ok(())
     }
 
+    // TODO: add feature to draw a health bar (need to add a total health)?
     fn draw_human(&self, ctx: &mut Context, human: &Human) -> GameResult {
         let human_sprite = &self.human_sprites[human.sprite_index];
+        let base = graphics::DrawParam::from((human.pos,)).rotation(human.tilt);
+        let params = if human.tilt.abs() > PI / 2.0 {
+            base.scale([1.0, -1.0])
+        } else {
+            base
+        };
 
-        graphics::draw(
-            ctx,
-            human_sprite,
-            graphics::DrawParam::from((human.pos,)).rotation(human.tilt),
-        )?;
+        graphics::draw(ctx, human_sprite, params)?;
 
         Ok(())
     }
 
     /// optionally returns if true if monster won, else false
     pub fn update_state(&mut self) -> Option<bool> {
+        self.update_humans();
+        self.update_monsters();
+
+        return if self.monsters.is_empty() || self.humans.is_empty() {
+            Some(self.humans.is_empty())
+        } else {
+            None
+        };
+    }
+
+    fn update_humans(&mut self) {
         for i in 0..self.humans.len() {
             if self.monsters.is_empty() {
                 break;
             }
-            let (target_index, distance) = self.get_closest_monster(&self.humans[i]);
+            let (target_index, distance) = self.get_closest_monster(&self.humans[i].pos);
             let target = &mut self.monsters[target_index];
-            let acute_tilt = get_acute_tilt(target.pos, self.humans[i].pos);
+            let acute_tilt = get_acute_tilt(&target.pos, &self.humans[i].pos);
             // HACK: acute_tilt is correct, but actual_tilt is rather unintuitive:
             let actual_tilt = if target.pos.x >= self.humans[i].pos.x
                 && target.pos.y <= self.humans[i].pos.y
@@ -239,26 +288,105 @@ impl AttackState {
             if distance >= self.humans[i].range {
                 // move if not in range
                 self.humans[i].move_along_tilt();
-            } else if (self.humans[i].tilt - actual_tilt).abs() < 0.01 {
+            } else if (self.humans[i].tilt - actual_tilt).abs() < 0.01
+                && self.humans[i].cooldown == 0
+            {
+                if let Err(error) = self.gunshot_sound.play() {
+                    // play gunshot
+                    eprintln!("{}", error);
+                }
                 target.hp -= self.humans[i].damage;
                 if target.hp <= 0.0 {
                     self.monsters.remove(target_index);
                 }
+                self.humans[i].cooldown = 50;
+            }
+            if self.humans[i].cooldown > 0 {
+                self.humans[i].cooldown -= 1;
             }
         }
-
-        // TODO: update monsters:
-
-        return if self.monsters.is_empty() || self.humans.is_empty() {
-            Some(self.humans.is_empty())
-        } else { None }
     }
 
-    fn get_closest_monster(&self, human: &Human) -> (usize, f32) {
+    fn update_monsters(&mut self) {
+        for i in 0..self.monsters.len() {
+            // center_point assumes half scaling
+            let monster_center_point = mint::Point2 {
+                x: self.monsters[i].pos.x + 16.0,
+                y: self.monsters[i].pos.y + 48.0,
+            };
+            let (possible_target_index, distance) = self.get_closest_human(&monster_center_point);
+            let possible_target = &mut self.humans[possible_target_index];
+            let sight_range = self.monsters[i].head.get_sight_range();
+            if distance <= sight_range / 2.0 {
+                // NOTE: attack range is 1/4 of sight
+                if self.monsters[i].cooldown == 0 {
+                    let choice = self.thread_rng.gen_range(0, self.hit_sounds.len());
+                    if let Err(error) = self.hit_sounds[choice].play() {
+                        // play gunshot
+                        eprintln!("{}", error);
+                    }
+
+                    possible_target.hp -= self.monsters[i].arms.get_damage();
+                    if possible_target.hp <= 0.0 {
+                        self.humans.remove(possible_target_index);
+                    }
+                    self.monsters[i].cooldown = 40;
+                }
+            } else if distance <= sight_range {
+                let acute_angle = get_acute_tilt(&possible_target.pos, &self.monsters[i].pos);
+                let (curr_x, curr_y) = (self.monsters[i].pos.x, self.monsters[i].pos.y);
+                let speed = self.monsters[i].legs.get_speed();
+
+                self.monsters[i].pos = mint::Point2 {
+                    x: curr_x
+                        + if curr_x <= possible_target.pos.x {
+                            speed * acute_angle.cos()
+                        } else {
+                            -speed * acute_angle.cos()
+                        },
+                    y: curr_y
+                        + if curr_y <= possible_target.pos.y {
+                            speed * acute_angle.sin()
+                        } else {
+                            -speed * acute_angle.sin()
+                        },
+                };
+            } else {
+                let choice: i8 = self.thread_rng.gen_range(0, 4);
+                let speed = self.monsters[i].legs.get_speed() / 4.0;
+                let new_pos = match choice {
+                    0 => mint::Point2 {
+                        x: self.monsters[i].pos.x,
+                        y: 0.0f32.max(self.monsters[i].pos.y - speed),
+                    },
+                    1 => mint::Point2 {
+                        x: SCREEN_SIZE.0.min(self.monsters[i].pos.x + speed),
+                        y: self.monsters[i].pos.y,
+                    },
+                    2 => mint::Point2 {
+                        x: self.monsters[i].pos.x,
+                        y: SCREEN_SIZE.1.min(self.monsters[i].pos.y + speed),
+                    },
+                    3 => mint::Point2 {
+                        x: 0.0f32.max(self.monsters[i].pos.x - speed),
+                        y: self.monsters[i].pos.y,
+                    },
+                    _ => panic!(),
+                };
+                self.monsters[i].pos = new_pos;
+            }
+
+            if self.monsters[i].cooldown > 0 {
+                self.monsters[i].cooldown -= 1;
+            }
+        }
+    }
+
+    fn get_closest_monster(&self, human_pos: &mint::Point2<f32>) -> (usize, f32) {
         let mut curr_monster_index = 0;
         let mut curr_min = f32::INFINITY;
         for (i, monster) in self.monsters.iter().enumerate() {
-            let temp = get_euclid_distance(human.pos, monster.pos);
+            let temp = get_euclid_distance(human_pos, &monster.pos);
             if temp < curr_min {
                 curr_min = temp;
                 curr_monster_index = i;
@@ -266,12 +394,25 @@ impl AttackState {
         }
         (curr_monster_index, curr_min)
     }
+
+    fn get_closest_human(&self, monster_pos: &mint::Point2<f32>) -> (usize, f32) {
+        let mut curr_human_index = 0;
+        let mut curr_min = f32::INFINITY;
+        for (i, human) in self.humans.iter().enumerate() {
+            let temp = get_euclid_distance(monster_pos, &human.pos);
+            if temp < curr_min {
+                curr_min = temp;
+                curr_human_index = i;
+            }
+        }
+        (curr_human_index, curr_min)
+    }
 }
 
-fn get_acute_tilt(point1: mint::Point2<f32>, point2: mint::Point2<f32>) -> f32 {
+fn get_acute_tilt(point1: &mint::Point2<f32>, point2: &mint::Point2<f32>) -> f32 {
     ((point1.y - point2.y).abs() / (point1.x - point2.x).abs()).atan()
 }
 
-fn get_euclid_distance(point1: mint::Point2<f32>, point2: mint::Point2<f32>) -> f32 {
+fn get_euclid_distance(point1: &mint::Point2<f32>, point2: &mint::Point2<f32>) -> f32 {
     (point1.x - point2.x).hypot(point1.y - point2.y)
 }

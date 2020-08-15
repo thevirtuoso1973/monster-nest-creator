@@ -1,5 +1,5 @@
-use ggez::{Context, GameResult, graphics};
-use crate::monster_build::{Arms, Body, BuilderState, Head, Legs};
+use crate::monster_build::{Arms, Body, Head, Legs};
+use ggez::{graphics, Context};
 
 pub fn get_heads(ctx: &mut Context) -> Vec<Head> {
     let head1 = graphics::Image::new(ctx, "/sprites/googly-eyes.png").unwrap();
@@ -23,7 +23,7 @@ pub fn get_arms(ctx: &mut Context) -> Vec<Arms> {
 pub fn get_legs(ctx: &mut Context) -> Vec<Legs> {
     let legs1 = graphics::Image::new(ctx, "/sprites/blob-legs.png").unwrap();
 
-    vec![Legs::new(legs1, 20.0)]
+    vec![Legs::new(legs1, 10.0)]
 }
 
 pub fn get_human_sprites(ctx: &mut Context) -> Vec<graphics::Image> {

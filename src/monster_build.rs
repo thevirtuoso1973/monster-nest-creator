@@ -19,6 +19,10 @@ impl Head {
             sight_range,
         }
     }
+
+    pub fn get_sight_range(&self) -> f32 {
+        self.sight_range
+    }
 }
 
 impl Sprite for Head {
@@ -58,6 +62,10 @@ pub struct Arms {
 impl Arms {
     pub fn new(sprite: graphics::Image, damage: f32) -> Self {
         Self { sprite, damage }
+    }
+
+    pub fn get_damage(&self) -> f32 {
+        self.damage
     }
 }
 
