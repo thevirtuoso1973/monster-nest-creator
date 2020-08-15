@@ -3,16 +3,18 @@ use ggez;
 use ggez::event::{self, KeyCode, KeyMods};
 use ggez::graphics;
 use ggez::{Context, GameResult};
+use monster_nest_creator::monster::AttackState;
+use monster_nest_creator::monster_build::{Arms, Body, BuilderState, Head, Legs};
+use monster_nest_creator::SCREEN_SIZE;
+use monster_nest_creator::sprite_loader::*;
 use std::env;
 use std::path;
-use monster_nest_creator::monster_build::{ Head, Body, Arms, Legs, BuilderState };
-use monster_nest_creator::monster::AttackState;
-use monster_nest_creator::SCREEN_SIZE;
 
 enum ScreenState {
     MainMenu,
     MonsterCreation, // player building their monster
     NightAttack,     // humans attack the 'nest'
+    EndGame,
 }
 
 // contains the game's state
@@ -26,38 +28,7 @@ struct MainState {
     builder_state: BuilderState,
     attack_state: AttackState,
     day: u16,
-}
-
-fn get_heads(ctx: &mut Context) -> Vec<Head> {
-    let head1 = graphics::Image::new(ctx, "/sprites/googly-eyes.png").unwrap();
-    let head2 = graphics::Image::new(ctx, "/sprites/longeyes.png").unwrap();
-
-    vec![Head::new(head1, 100.0), Head::new(head2, 150.0)]
-}
-
-fn get_bodies(ctx: &mut Context) -> Vec<Body> {
-    let body1 = graphics::Image::new(ctx, "/sprites/round-body.png").unwrap();
-
-    vec![Body::new(body1, 100.0)]
-}
-
-fn get_arms(ctx: &mut Context) -> Vec<Arms> {
-    let arms1 = graphics::Image::new(ctx, "/sprites/small-arms.png").unwrap();
-
-    vec![Arms::new(arms1, 10.0)]
-}
-
-fn get_legs(ctx: &mut Context) -> Vec<Legs> {
-    let legs1 = graphics::Image::new(ctx, "/sprites/blob-legs.png").unwrap();
-
-    vec![Legs::new(legs1, 20.0)]
-}
-
-fn get_human_sprites(ctx: &mut Context) -> Vec<graphics::Image> {
-    let temp = graphics::Image::solid(ctx, 32,
-                                      graphics::Color::from_rgb(128, 0, 0)).unwrap();
-
-    vec![temp]
+    won: bool,
 }
 
 impl MainState {
@@ -73,9 +44,12 @@ impl MainState {
         });
         let main_img = graphics::Image::new(ctx, "/sprites/googly-eyes.png")?;
         let title_text = graphics::Text::new(graphics::TextFragment {
-            text: format!("{}{}{}", "Create your monsters in the day, but beware,\n",
-                          "humans will attack your nest in the night!\n\n",
-                          "Press enter to continue..."),
+            text: format!(
+                "{}{}{}",
+                "Create your monsters in the day, but beware,\n",
+                "humans will attack your nest in the night!\n\n",
+                "Press enter to continue..."
+            ),
             color: Some(graphics::BLACK),
             font: Some(font),
             scale: Some(graphics::Scale { x: 20.0, y: 20.0 }),
@@ -88,13 +62,18 @@ impl MainState {
             title,
             title_img: main_img,
             title_text,
-            builder_state: BuilderState::new(get_heads(ctx), get_bodies(ctx), get_arms(ctx), get_legs(ctx)),
+            builder_state: BuilderState::new(
+                get_heads(ctx),
+                get_bodies(ctx),
+                get_arms(ctx),
+                get_legs(ctx),
+            ),
             attack_state: AttackState::new(get_human_sprites(ctx)),
             day: 1,
+            won: false,
         };
         Ok(s)
     }
-
 
     fn switch_state(&mut self, new_state: ScreenState) {
         self.state = new_state;
@@ -107,13 +86,22 @@ impl MainState {
 // The `EventHandler` trait also contains callbacks for event handling
 // that you can override if you wish, but the defaults are fine.
 impl event::EventHandler for MainState {
-    fn update(&mut self, ctx: &mut Context) -> GameResult {
+    fn update(&mut self, _ctx: &mut Context) -> GameResult {
         match self.state {
-            ScreenState::MainMenu => {}
-            ScreenState::MonsterCreation => {}
             ScreenState::NightAttack => {
-                self.attack_state.update_state(ctx)
+                if let Some(check_win) = self.attack_state.update_state() {
+                    if check_win && self.day == 2 {
+                        self.won = true;
+                        self.switch_state(ScreenState::EndGame);
+                    } else if !check_win {
+                        self.switch_state(ScreenState::EndGame);
+                    } else { // move on to next day
+                        self.day += 1;
+                        self.switch_state(ScreenState::MonsterCreation);
+                    }
+                }
             }
+            _ => (),
         }
         Ok(())
     }
@@ -138,10 +126,14 @@ impl event::EventHandler for MainState {
 
                 let scale_vec = [2.0, 2.0];
                 let img_dest_point = mint::Point2 {
-                    x: (SCREEN_SIZE.0 - (self.title_img.width() as f32*scale_vec[0])),
-                    y: (SCREEN_SIZE.1 - self.title_img.height() as f32*scale_vec[1]),
+                    x: (SCREEN_SIZE.0 - (self.title_img.width() as f32 * scale_vec[0])),
+                    y: (SCREEN_SIZE.1 - self.title_img.height() as f32 * scale_vec[1]),
                 };
-                graphics::draw(ctx, &self.title_img, graphics::DrawParam::from((img_dest_point,)).scale(scale_vec))?;
+                graphics::draw(
+                    ctx,
+                    &self.title_img,
+                    graphics::DrawParam::from((img_dest_point,)).scale(scale_vec),
+                )?;
             }
             ScreenState::MonsterCreation => {
                 graphics::clear(ctx, graphics::WHITE);
@@ -163,6 +155,29 @@ impl event::EventHandler for MainState {
                 graphics::clear(ctx, graphics::Color::from_rgb(166, 166, 166));
 
                 self.attack_state.draw(ctx)?;
+            }
+            ScreenState::EndGame => {
+                graphics::clear(ctx, graphics::WHITE);
+                let end_text = if self.won {
+                    graphics::Text::new(graphics::TextFragment {
+                        text: "You won!".to_string(),
+                        color: Some(graphics::Color::from_rgb(0, 255, 0)),
+                        font: Some(self.font),
+                        scale: Some(graphics::Scale { x: 20.0, y: 20.0 }),
+                    })
+                } else {
+                    graphics::Text::new(graphics::TextFragment {
+                        text: "All your monsters died!".to_string(),
+                        color: Some(graphics::Color::from_rgb(255, 0, 0)),
+                        font: Some(self.font),
+                        scale: Some(graphics::Scale { x: 20.0, y: 20.0 }),
+                    })
+                };
+                let title_text_dest_point = mint::Point2 {
+                    x: (SCREEN_SIZE.0 / 2.0 - 140.0),
+                    y: (SCREEN_SIZE.1 / 2.0),
+                };
+                graphics::draw(ctx, &end_text, (title_text_dest_point,))?;
             }
         }
         graphics::present(ctx)?;
@@ -205,9 +220,15 @@ impl event::EventHandler for MainState {
                 _ => (),
             },
             ScreenState::NightAttack => match keycode {
+                KeyCode::Down => self.attack_state.move_monster_down(),
+                KeyCode::Right => self.attack_state.move_monster_right(),
                 KeyCode::Escape => event::quit(ctx),
                 _ => (),
-            }
+            },
+            ScreenState::EndGame => match keycode {
+                KeyCode::Escape => event::quit(ctx),
+                _ => (),
+            },
         }
     }
 }
