@@ -35,6 +35,24 @@ fn get_heads(ctx: &mut Context) -> Vec<Head> {
     return vec![Head::new(head1, 100.0), Head::new(head2, 150.0)];
 }
 
+fn get_bodies(ctx: &mut Context) -> Vec<Body> {
+    let body1 = graphics::Image::new(ctx, "/sprites/round-body.png").unwrap();
+
+    return vec![Body::new(body1, 100.0)];
+}
+
+fn get_arms(ctx: &mut Context) -> Vec<Arms> {
+    let arms1 = graphics::Image::new(ctx, "/sprites/small-arms.png").unwrap();
+
+    return vec![Arms::new(arms1, 10.0)];
+}
+
+fn get_legs(ctx: &mut Context) -> Vec<Legs> {
+    let legs1 = graphics::Image::new(ctx, "/sprites/blob-legs.png").unwrap();
+
+    return vec![Legs::new(legs1, 20.0)];
+}
+
 fn get_human_sprites(ctx: &mut Context) -> Vec<graphics::Image> {
     Vec::new() // TODO: add humans
 }
@@ -67,7 +85,7 @@ impl MainState {
             title,
             title_img: main_img,
             title_text,
-            builder_state: BuilderState::new(get_heads(ctx), Vec::new(), Vec::new(), Vec::new()), // TODO: add the possible body parts
+            builder_state: BuilderState::new(get_heads(ctx), get_bodies(ctx), get_arms(ctx), get_legs(ctx)),
             attack_state: AttackState::new(get_human_sprites(ctx)),
             day: 1,
         };
