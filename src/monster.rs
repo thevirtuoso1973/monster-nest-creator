@@ -273,6 +273,14 @@ impl AttackState {
             },))
             .scale(scale_vector),
         )?;
+
+        let health_height = 10;
+        let health_rect = graphics::Image::solid(ctx, health_height, graphics::Color::from_rgb(0, 255, 0))?;
+        let actual_length = (32.0*(monster.hp/monster.body.get_health())) as u16;
+        let x_scaling = actual_length as f32/health_height as f32; // health_height is also width
+        let pos = mint::Point2 { x: monster.pos.x, y: monster.pos.y+96.0 };
+        graphics::draw(ctx, &health_rect, graphics::DrawParam::from((pos,)).scale([x_scaling, 1.0]))?;
+
         Ok(())
     }
 
