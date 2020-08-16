@@ -4,12 +4,12 @@ use audio::SoundSource;
 use ggez::{
     audio,
     graphics::{self, Image},
-    Context, GameResult,
+    Context, GameResult, input,
 };
 use rand::Rng;
 use std::f32::consts::PI;
 
-// NOTE: I'm prob gonna assume that the game world is also just 800x600
+const FRAMES_TO_WIN_STAGE: usize = 30*60;
 
 pub struct Monster {
     head: Head,
@@ -87,6 +87,26 @@ impl Human {
     }
 }
 
+fn normalize_x(x: f32) -> f32 {
+    return if x < 0.0 {
+        0.0
+    } else if x > SCREEN_SIZE.0 {
+        SCREEN_SIZE.0
+    } else {
+        x
+    }
+}
+
+fn normalize_y(y: f32) -> f32 {
+    return if y < 0.0 {
+        0.0
+    } else if y > SCREEN_SIZE.1 {
+        SCREEN_SIZE.1
+    } else {
+        y
+    }
+}
+
 pub struct AttackState {
     human_sprites: Vec<Image>,
     monsters: Vec<Monster>,
@@ -95,6 +115,7 @@ pub struct AttackState {
     hit_sounds: Vec<audio::Source>,
     thread_rng: rand::rngs::ThreadRng,
     tree_sprite_batch: graphics::spritebatch::SpriteBatch,
+    time_left: usize,
 }
 
 impl AttackState {
@@ -113,6 +134,7 @@ impl AttackState {
             hit_sounds,
             thread_rng: rand::thread_rng(),
             tree_sprite_batch,
+            time_left: FRAMES_TO_WIN_STAGE,
         }
     }
 
@@ -301,15 +323,20 @@ impl AttackState {
     }
 
     /// optionally returns if true if monster won, else false
-    pub fn update_state(&mut self) -> Option<bool> {
-        self.update_humans();
-        self.update_monsters();
+    pub fn update_state(&mut self, ctx: &mut Context) -> Option<bool> {
+        self.time_left -= 1;
 
-        return if self.monsters.is_empty() || self.humans.is_empty() {
-            Some(self.humans.is_empty())
+        self.update_humans();
+        self.update_monsters(ctx);
+
+        let out;
+        if self.monsters.is_empty() || self.humans.is_empty() || self.time_left == 0 {
+            out = Some(self.humans.is_empty() || self.time_left == 0);
+            self.time_left = FRAMES_TO_WIN_STAGE;
         } else {
-            None
+            out = None;
         };
+        return out;
     }
 
     fn update_humans(&mut self) {
@@ -357,7 +384,7 @@ impl AttackState {
         }
     }
 
-    fn update_monsters(&mut self) {
+    fn update_monsters(&mut self, ctx: &mut Context) {
         for i in 0..self.monsters.len() {
             if self.humans.is_empty() {
                 break;
@@ -404,6 +431,27 @@ impl AttackState {
                             -speed * acute_angle.sin()
                         },
                 };
+            } else if input::mouse::button_pressed(ctx, input::mouse::MouseButton::Left) {
+                let curr_mouse_pos = input::mouse::position(ctx);
+                let acute_angle = get_acute_tilt(&curr_mouse_pos, &self.monsters[i].pos);
+                let (curr_x, curr_y) = (self.monsters[i].pos.x, self.monsters[i].pos.y);
+                let speed = self.monsters[i].legs.get_speed();
+
+                let new_x = curr_x + if curr_x <= curr_mouse_pos.x {
+                    speed * acute_angle.cos()
+                } else {
+                    -speed * acute_angle.cos()
+                };
+                let new_y = curr_y + if curr_y <= curr_mouse_pos.y {
+                    speed * acute_angle.sin()
+                } else {
+                    -speed * acute_angle.sin()
+                };
+
+                self.monsters[i].pos = mint::Point2 {
+                    x: normalize_x(new_x),
+                    y: normalize_y(new_y),
+                };
             } else {
                 let choice: i8 = self.thread_rng.gen_range(0, 4);
                 let speed = self.monsters[i].legs.get_speed() / 4.0;
@@ -428,7 +476,6 @@ impl AttackState {
                 };
                 self.monsters[i].pos = new_pos;
             }
-
             if self.monsters[i].cooldown > 0 {
                 self.monsters[i].cooldown -= 1;
             }

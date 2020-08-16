@@ -58,7 +58,7 @@ impl MainState {
             scale: Some(graphics::Scale { x: 20.0, y: 20.0 }),
         });
 
-        let transition_sound = audio::Source::new(ctx, "/sounds/snes-doom-intro.mp3")?;
+        let transition_sound = audio::Source::new(ctx, "/sounds/You_Won.mp3")?;
         let gunshot_sound = audio::Source::new(ctx, "/sounds/9_mm_gunshot.mp3")?;
         let hit_sounds = vec![
             audio::Source::new(ctx, "/sounds/hit01.mp3.flac")?,
@@ -105,12 +105,15 @@ impl MainState {
 // The `EventHandler` trait also contains callbacks for event handling
 // that you can override if you wish, but the defaults are fine.
 impl event::EventHandler for MainState {
-    fn update(&mut self, _ctx: &mut Context) -> GameResult {
+    fn update(&mut self, ctx: &mut Context) -> GameResult {
         match self.state {
             ScreenState::NightAttack => {
-                if let Some(check_win) = self.attack_state.update_state() {
+                if let Some(check_win) = self.attack_state.update_state(ctx) {
                     if check_win && self.day == 5 {
                         self.won = true;
+                        if let Err(error) = self.transition_sound.play() {
+                            eprintln!("{}", error);
+                        }
                         self.switch_state(ScreenState::EndGame);
                     } else if !check_win {
                         self.switch_state(ScreenState::EndGame);
@@ -226,9 +229,6 @@ impl event::EventHandler for MainState {
         match self.state {
             ScreenState::MainMenu => match keycode {
                 KeyCode::Return => {
-                    if let Err(error) = self.transition_sound.play() {
-                        eprintln!("{}", error);
-                    }
                     self.switch_state(ScreenState::MonsterCreation);
                 },
                 KeyCode::Escape => event::quit(ctx),
