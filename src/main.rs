@@ -172,7 +172,7 @@ impl event::EventHandler for MainState {
                     }),
                     (day_dest_point,),
                 )?;
-                self.builder_state.draw(ctx)?;
+                self.builder_state.draw(ctx, self.font)?;
             }
             ScreenState::NightAttack => {
                 graphics::clear(ctx, graphics::Color::from_rgb(166, 166, 166));

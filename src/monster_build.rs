@@ -123,16 +123,19 @@ impl BuilderState {
         }
     }
 
-    pub fn draw(&self, ctx: &mut Context) -> GameResult {
+    pub fn draw(&self, ctx: &mut Context, font: graphics::Font) -> GameResult {
         let head_point = mint::Point2 {
             x: (SCREEN_SIZE.0 / 2.0),
             y: (10.0),
         };
+        let text;
         if self.curr_choices[0].is_none() {
             self.draw_options(&self.possible_heads, ctx)?;
 
             let head = &self.possible_heads[self.curr_hover];
             graphics::draw(ctx, head.get_image(), (head_point,))?;
+
+            text = "Choose head:";
         } else if self.curr_choices[1].is_none() {
             self.draw_options(&self.possible_bodies, ctx)?;
 
@@ -142,6 +145,8 @@ impl BuilderState {
             };
             let body = &self.possible_bodies[self.curr_hover];
             graphics::draw(ctx, body.get_image(), (body_point,))?;
+
+            text = "Choose body:";
         } else if self.curr_choices[2].is_none() {
             self.draw_options(&self.possible_arms, ctx)?;
 
@@ -161,6 +166,8 @@ impl BuilderState {
                 arm.get_image(),
                 graphics::DrawParam::from((other_arm_point,)).scale([-1.0, 1.0]),
             )?;
+
+            text = "Choose arm";
         } else {
             self.draw_options(&self.possible_legs, ctx)?;
 
@@ -170,9 +177,21 @@ impl BuilderState {
             };
             let leg = &self.possible_legs[self.curr_hover];
             graphics::draw(ctx, leg.get_image(), (leg_point,))?;
+
+            text = "Choose leg";
         }
 
         self.draw_choices(ctx)?;
+
+        let text_pos = mint::Point2 { x: 5.0, y: SCREEN_SIZE.1-96.0 };
+        graphics::draw(ctx,
+                       &graphics::Text::new(graphics::TextFragment {
+                           text: text.to_string(),
+                           color: Some(graphics::BLACK),
+                           font: Some(font),
+                           scale: Some(graphics::Scale { x: 20.0, y: 20.0 }),
+                       }),
+                       (text_pos,))?;
 
         Ok(())
     }
@@ -258,19 +277,19 @@ impl BuilderState {
                 self.curr_hover -= 1
             }
         } else if self.curr_choices[1].is_none() {
-            if self.curr_hover < self.possible_bodies.len() - 1 {
+            if next && self.curr_hover < self.possible_bodies.len() - 1 {
                 self.curr_hover += 1
             } else if !next && self.curr_hover > 0 {
                 self.curr_hover -= 1
             }
         } else if self.curr_choices[2].is_none() {
-            if self.curr_hover < self.possible_arms.len() - 1 {
+            if next && self.curr_hover < self.possible_arms.len() - 1 {
                 self.curr_hover += 1
             } else if !next && self.curr_hover > 0 {
                 self.curr_hover -= 1
             }
         } else {
-            if self.curr_hover < self.possible_legs.len() - 1 {
+            if next && self.curr_hover < self.possible_legs.len() - 1 {
                 self.curr_hover += 1
             } else if !next && self.curr_hover > 0 {
                 self.curr_hover -= 1
