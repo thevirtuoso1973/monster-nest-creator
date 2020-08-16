@@ -4,8 +4,9 @@ use ggez::{graphics, Context};
 pub fn get_heads(ctx: &mut Context) -> Vec<Head> {
     let head1 = graphics::Image::new(ctx, "/sprites/googly-eyes.png").unwrap();
     let head2 = graphics::Image::new(ctx, "/sprites/longeyes.png").unwrap();
+    let head3 = graphics::Image::new(ctx, "/sprites/thanos-head.png").unwrap();
 
-    vec![Head::new(head1, 100.0), Head::new(head2, 150.0)]
+    vec![Head::new(head1, 130.0), Head::new(head2, 180.0), Head::new(head3, 105.0)]
 }
 
 pub fn get_bodies(ctx: &mut Context) -> Vec<Body> {

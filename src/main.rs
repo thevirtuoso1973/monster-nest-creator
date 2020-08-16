@@ -11,7 +11,7 @@ use std::env;
 use std::path;
 use audio::SoundSource;
 
-enum ScreenState {
+enum ScreenState { // TODO: make stuff look better (somehow)
     MainMenu,
     MonsterCreation, // player building their monster
     NightAttack,     // humans attack the 'nest'
@@ -20,7 +20,7 @@ enum ScreenState {
 
 // contains the game's state
 struct MainState {
-    frames: usize,
+    frames_modulo: usize,
     state: ScreenState,
     font: graphics::Font,
     title: graphics::Text,
@@ -37,7 +37,7 @@ impl MainState {
     fn new(ctx: &mut Context) -> GameResult<MainState> {
         // The ttf file will be in your resources directory. Later, we
         // will mount that directory so we can omit it in the path here.
-        let font = graphics::Font::new(ctx, "/Roboto/Roboto-Regular.ttf")?; // REVIEW: replace with scary font?
+        let font = graphics::Font::new(ctx, "/fonts/Alata-Regular.ttf")?; // REVIEW: replace with scary font?
         let title = graphics::Text::new(graphics::TextFragment {
             text: "Monster Nest".to_string(),
             color: Some(graphics::BLACK),
@@ -69,7 +69,7 @@ impl MainState {
         let tree_sprite = graphics::Image::new(ctx, "/sprites/tree.png")?;
 
         let s = MainState {
-            frames: 0,
+            frames_modulo: 0,
             state: ScreenState::MainMenu,
             font,
             title,
@@ -133,23 +133,23 @@ impl event::EventHandler for MainState {
         // Drawables are drawn from their top-left corner.
         match self.state {
             ScreenState::MainMenu => {
-                graphics::clear(ctx, graphics::WHITE);
+                graphics::clear(ctx, graphics::Color::from_rgb(236, 198, 198));
 
                 let title_dest_point = mint::Point2 {
-                    x: (SCREEN_SIZE.0 / 2.0 - 140.0),
+                    x: (SCREEN_SIZE.0 / 2.0 - 120.0),
                     y: (10.0),
                 };
                 graphics::draw(ctx, &self.title, (title_dest_point,))?;
 
                 let title_text_dest_point = mint::Point2 {
-                    x: (SCREEN_SIZE.0 / 2.0 - 140.0),
-                    y: (SCREEN_SIZE.1 / 2.0),
+                    x: (SCREEN_SIZE.0 / 2.0 - 170.0),
+                    y: (SCREEN_SIZE.1 / 2.0 - 20.0),
                 };
                 graphics::draw(ctx, &self.title_text, (title_text_dest_point,))?;
 
                 let scale_vec = [2.0, 2.0];
                 let img_dest_point = mint::Point2 {
-                    x: (SCREEN_SIZE.0 - (self.title_img.width() as f32 * scale_vec[0])),
+                    x: self.frames_modulo as f32,
                     y: (SCREEN_SIZE.1 - self.title_img.height() as f32 * scale_vec[1]),
                 };
                 graphics::draw(
@@ -161,7 +161,7 @@ impl event::EventHandler for MainState {
             ScreenState::MonsterCreation => {
                 graphics::clear(ctx, graphics::WHITE);
 
-                let day_dest_point = mint::Point2 { x: (1.0), y: (1.0) };
+                let day_dest_point = mint::Point2 { x: (10.0), y: (10.0) };
                 graphics::draw(
                     ctx,
                     &graphics::Text::new(graphics::TextFragment {
@@ -190,7 +190,10 @@ impl event::EventHandler for MainState {
                     })
                 } else {
                     graphics::Text::new(graphics::TextFragment {
-                        text: "All your monsters died!".to_string(),
+                        text: format!(
+                            "All your monsters died!\nYou survived until day {}.",
+                            self.day
+                        ),
                         color: Some(graphics::Color::from_rgb(255, 0, 0)),
                         font: Some(self.font),
                         scale: Some(graphics::Scale { x: 35.0, y: 35.0 }),
@@ -205,8 +208,8 @@ impl event::EventHandler for MainState {
         }
         graphics::present(ctx)?;
 
-        self.frames += 1;
-        if (self.frames % 100) == 0 {
+        self.frames_modulo = (self.frames_modulo + 1) % SCREEN_SIZE.0 as usize;
+        if (self.frames_modulo % 100) == 0 {
             println!("FPS: {}", ggez::timer::fps(ctx));
         }
 
