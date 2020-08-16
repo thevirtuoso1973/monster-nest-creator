@@ -123,6 +123,8 @@ impl event::EventHandler for MainState {
                         if let Err(error) = self.transition_sound.play() {
                             eprintln!("{}", error);
                         }
+                        self.attack_state.reset_monster_pos();
+
                         self.switch_state(ScreenState::MonsterCreation);
                     }
                 }
@@ -168,7 +170,7 @@ impl event::EventHandler for MainState {
                 graphics::draw(
                     ctx,
                     &graphics::Text::new(graphics::TextFragment {
-                        text: format!("Day {}", self.day),
+                        text: format!("Day {}\n{}", self.day, if self.day > 1 { "You survived last night." } else { "" }),
                         color: Some(graphics::BLACK),
                         font: Some(self.font),
                         scale: Some(graphics::Scale { x: 40.0, y: 40.0 }),
@@ -194,7 +196,7 @@ impl event::EventHandler for MainState {
                 } else {
                     graphics::Text::new(graphics::TextFragment {
                         text: format!(
-                            "All your monsters died!\nYou survived until day {}.",
+                            "All your monsters died!\nYou survived until day {}.\n\nPress enter to restart.",
                             self.day
                         ),
                         color: Some(graphics::Color::from_rgb(255, 0, 0)),
@@ -204,7 +206,7 @@ impl event::EventHandler for MainState {
                 };
                 let title_text_dest_point = mint::Point2 {
                     x: (SCREEN_SIZE.0 / 2.0 - 140.0),
-                    y: (SCREEN_SIZE.1 / 2.0),
+                    y: (SCREEN_SIZE.1 / 2.0 - 20.0),
                 };
                 graphics::draw(ctx, &end_text, (title_text_dest_point,))?;
             }

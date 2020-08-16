@@ -138,6 +138,13 @@ impl AttackState {
         }
     }
 
+    pub fn reset_monster_pos(&mut self) {
+        for monster in &mut self.monsters {
+            let new_point = mint::Point2 { x: 0.0, y: self.thread_rng.gen_range(0.0, SCREEN_SIZE.1-96.0) };
+            monster.pos = new_point;
+        }
+    }
+
     pub fn move_monster_left(&mut self) {
         // NOTE: for debugging
         let monster = &mut self.monsters[0];
