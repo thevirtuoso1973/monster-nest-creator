@@ -218,6 +218,7 @@ impl event::EventHandler for MainState {
                     self.builder_state.choose_current_and_reset();
                     if self.builder_state.is_fully_selected() {
                         let (head, body, arms, legs) = self.builder_state.get_built_monster();
+                        self.builder_state.empty_choices();
                         self.attack_state.add_monster(head, body, arms, legs);
 
                         self.attack_state.generate_humans(self.day);

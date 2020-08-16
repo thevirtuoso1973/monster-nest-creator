@@ -17,13 +17,13 @@ pub fn get_bodies(ctx: &mut Context) -> Vec<Body> {
 pub fn get_arms(ctx: &mut Context) -> Vec<Arms> {
     let arms1 = graphics::Image::new(ctx, "/sprites/small-arms.png").unwrap();
 
-    vec![Arms::new(arms1, 10.0)]
+    vec![Arms::new(arms1, 5.0)]
 }
 
 pub fn get_legs(ctx: &mut Context) -> Vec<Legs> {
     let legs1 = graphics::Image::new(ctx, "/sprites/blob-legs.png").unwrap();
 
-    vec![Legs::new(legs1, 10.0)]
+    vec![Legs::new(legs1, 5.0)]
 }
 
 pub fn get_human_sprites(ctx: &mut Context) -> Vec<graphics::Image> {

@@ -309,6 +309,9 @@ impl AttackState {
 
     fn update_monsters(&mut self) {
         for i in 0..self.monsters.len() {
+            if self.humans.is_empty() {
+                break;
+            }
             // center_point assumes half scaling
             let monster_center_point = mint::Point2 {
                 x: self.monsters[i].pos.x + 16.0,

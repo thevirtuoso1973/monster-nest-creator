@@ -304,4 +304,8 @@ impl BuilderState {
             self.possible_legs[self.curr_choices[3].unwrap()].clone(),
         )
     }
+
+    pub fn empty_choices(&mut self) {
+        self.curr_choices = [None, None, None, None];
+    }
 }
