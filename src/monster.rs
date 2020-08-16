@@ -42,6 +42,7 @@ pub struct Human {
     pos: mint::Point2<f32>,
     speed: f32,
     range: f32,
+    total_hp: f32,
     hp: f32,
     damage: f32,
     // the number of frames left until attack is available (game runs at ~70fps):
@@ -63,6 +64,7 @@ impl Human {
             pos,
             speed,
             range,
+            total_hp: hp,
             hp,
             damage,
             cooldown: 0,
@@ -274,13 +276,15 @@ impl AttackState {
         Ok(())
     }
 
-    // TODO: add feature to draw a health bar (need to add a total health)?
-    // maybe change the color of the sprite?
     fn draw_human(&self, ctx: &mut Context, human: &Human) -> GameResult {
         let human_sprite = &self.human_sprites[human.sprite_index];
         let mut params = graphics::DrawParam::from((human.pos,)).rotation(human.tilt);
         if human.tilt.abs() > PI / 2.0 {
             params = params.scale([1.0, -1.0])
+        }
+        if human.hp < human.total_hp*0.75 { // change color of human depending on health
+            let new_red = (255.0*(human.hp/human.total_hp)) as u8;
+            params = params.color(graphics::Color::from_rgb(new_red, 20, 20));
         }
 
         graphics::draw(ctx, human_sprite, params)?;
