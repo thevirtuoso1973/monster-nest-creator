@@ -278,6 +278,7 @@ impl BuilderState {
         }
     }
 
+    /// choose currently hovered body part
     pub fn choose_current_and_reset(&mut self) {
         if self.curr_choices[0].is_none() {
             self.curr_choices[0] = Some(self.curr_hover);

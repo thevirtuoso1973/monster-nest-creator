@@ -92,6 +92,7 @@ pub struct AttackState {
     gunshot_sound: audio::Source,
     hit_sounds: Vec<audio::Source>,
     thread_rng: rand::rngs::ThreadRng,
+    tree_sprite_batch: graphics::spritebatch::SpriteBatch,
 }
 
 impl AttackState {
@@ -99,7 +100,9 @@ impl AttackState {
         human_sprites: Vec<Image>,
         gunshot_sound: audio::Source,
         hit_sounds: Vec<audio::Source>,
+        tree_sprite: graphics::Image,
     ) -> Self {
+        let tree_sprite_batch = graphics::spritebatch::SpriteBatch::new(tree_sprite.clone());
         Self {
             human_sprites,
             monsters: Vec::new(),
@@ -107,6 +110,7 @@ impl AttackState {
             gunshot_sound,
             hit_sounds,
             thread_rng: rand::thread_rng(),
+            tree_sprite_batch,
         }
     }
 
@@ -147,37 +151,72 @@ impl AttackState {
     }
 
     pub fn add_monster(&mut self, head: Head, body: Body, arms: Arms, legs: Legs) {
+        let new_point = mint::Point2 { x: 0.0, y: self.thread_rng.gen_range(0.0, SCREEN_SIZE.1-96.0) };
         self.monsters.push(Monster::new(
             head,
             body,
             arms,
             legs,
-            mint::Point2 {
-                x: (0.0),
-                y: (64.0 * self.monsters.len() as f32),
-            },
+            new_point,
         )); // NOTE: ^monsters are close together^
     }
 
     pub fn generate_humans(&mut self, day: u16) {
         self.humans.clear();
         for i in 0..day {
+            let rnggen = &mut self.thread_rng;
             let new_pos = mint::Point2 {
                 x: SCREEN_SIZE.0 - 32.0,
-                y: SCREEN_SIZE.1 - (64.0 * (i as f32 + 1.0)),
+                y: rnggen.gen_range(0.0, SCREEN_SIZE.1-32.0),
             };
-            self.humans
-                .push(Human::new(0, new_pos, 2.0, 100.0, 50.0, 0.0)); // TODO actually randomise this
+            self.humans.push(Human::new(
+                rnggen.gen_range(0, self.human_sprites.len()), // index
+                new_pos,
+                rnggen.gen_range(2.0, (i+2) as f32*2.0), // speed
+                rnggen.gen_range(50.0, (i+2) as f32*50.0), // range
+                rnggen.gen_range(20.0, (i+2) as f32*20.0), // hp
+                rnggen.gen_range(10.0, (i+2) as f32*10.0), // damage
+            ));
         }
     }
 
-    pub fn draw(&self, ctx: &mut Context) -> GameResult {
+    pub fn generate_scenery(&mut self) {
+        self.tree_sprite_batch.clear();
+
+        let y = 0.0;
+        let mut x = 0.0;
+        while x < SCREEN_SIZE.0 {
+            let point = mint::Point2 { x, y };
+            self.tree_sprite_batch.add((point,));
+
+            x += self.thread_rng.gen_range(50.0, 100.0);
+        }
+
+        let y = SCREEN_SIZE.1 - 32.0;
+        let mut x = 0.0;
+        while x < SCREEN_SIZE.0 {
+            let point = mint::Point2 { x, y };
+            self.tree_sprite_batch.add((point,));
+
+            x += self.thread_rng.gen_range(50.0, 100.0);
+        }
+    }
+
+    pub fn draw(&mut self, ctx: &mut Context) -> GameResult {
+        self.draw_scenery(ctx)?;
+
         for monster in &self.monsters {
             self.draw_monster(ctx, monster, 0.5)?;
         }
         for human in &self.humans {
             self.draw_human(ctx, human)?;
         }
+        Ok(())
+    }
+
+    /// just draws the currently saved scenery
+    fn draw_scenery(&mut self, ctx: &mut Context) -> GameResult {
+        graphics::draw(ctx, &self.tree_sprite_batch, graphics::DrawParam::default())?;
         Ok(())
     }
 
@@ -236,14 +275,13 @@ impl AttackState {
     }
 
     // TODO: add feature to draw a health bar (need to add a total health)?
+    // maybe change the color of the sprite?
     fn draw_human(&self, ctx: &mut Context, human: &Human) -> GameResult {
         let human_sprite = &self.human_sprites[human.sprite_index];
-        let base = graphics::DrawParam::from((human.pos,)).rotation(human.tilt);
-        let params = if human.tilt.abs() > PI / 2.0 {
-            base.scale([1.0, -1.0])
-        } else {
-            base
-        };
+        let mut params = graphics::DrawParam::from((human.pos,)).rotation(human.tilt);
+        if human.tilt.abs() > PI / 2.0 {
+            params = params.scale([1.0, -1.0])
+        }
 
         graphics::draw(ctx, human_sprite, params)?;
 
@@ -299,7 +337,7 @@ impl AttackState {
                 if target.hp <= 0.0 {
                     self.monsters.remove(target_index);
                 }
-                self.humans[i].cooldown = 50;
+                self.humans[i].cooldown = 75;
             }
             if self.humans[i].cooldown > 0 {
                 self.humans[i].cooldown -= 1;

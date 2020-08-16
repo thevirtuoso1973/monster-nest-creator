@@ -10,24 +10,28 @@ pub fn get_heads(ctx: &mut Context) -> Vec<Head> {
 
 pub fn get_bodies(ctx: &mut Context) -> Vec<Body> {
     let body1 = graphics::Image::new(ctx, "/sprites/round-body.png").unwrap();
+    let body2 = graphics::Image::new(ctx, "/sprites/muscle-body.png").unwrap();
 
-    vec![Body::new(body1, 100.0)]
+    vec![Body::new(body1, 100.0), Body::new(body2, 80.0)]
 }
 
 pub fn get_arms(ctx: &mut Context) -> Vec<Arms> {
     let arms1 = graphics::Image::new(ctx, "/sprites/small-arms.png").unwrap();
+    let arms2 = graphics::Image::new(ctx, "/sprites/muscle-arms.png").unwrap();
 
-    vec![Arms::new(arms1, 5.0)]
+    vec![Arms::new(arms1, 5.0), Arms::new(arms2, 15.0)]
 }
 
 pub fn get_legs(ctx: &mut Context) -> Vec<Legs> {
     let legs1 = graphics::Image::new(ctx, "/sprites/blob-legs.png").unwrap();
+    let legs2 = graphics::Image::new(ctx, "/sprites/muscle-legs.png").unwrap();
 
-    vec![Legs::new(legs1, 5.0)]
+    vec![Legs::new(legs1, 5.0), Legs::new(legs2, 10.0)]
 }
 
 pub fn get_human_sprites(ctx: &mut Context) -> Vec<graphics::Image> {
     let human1 = graphics::Image::new(ctx, "/sprites/gun-human.png").unwrap();
+    let human2 = graphics::Image::new(ctx, "/sprites/gun-human2.png").unwrap();
 
-    vec![human1]
+    vec![human1, human2]
 }

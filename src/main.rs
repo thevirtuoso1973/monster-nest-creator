@@ -9,6 +9,7 @@ use monster_nest_creator::sprite_loader::*;
 use monster_nest_creator::SCREEN_SIZE;
 use std::env;
 use std::path;
+use audio::SoundSource;
 
 enum ScreenState {
     MainMenu,
@@ -25,6 +26,7 @@ struct MainState {
     title: graphics::Text,
     title_img: graphics::Image,
     title_text: graphics::Text,
+    transition_sound: audio::Source,
     builder_state: BuilderState,
     attack_state: AttackState,
     day: u16,
@@ -55,12 +57,16 @@ impl MainState {
             font: Some(font),
             scale: Some(graphics::Scale { x: 20.0, y: 20.0 }),
         });
+
+        let transition_sound = audio::Source::new(ctx, "/sounds/snes-doom-intro.mp3")?;
         let gunshot_sound = audio::Source::new(ctx, "/sounds/9_mm_gunshot.mp3")?;
         let hit_sounds = vec![
             audio::Source::new(ctx, "/sounds/hit01.mp3.flac")?,
             audio::Source::new(ctx, "/sounds/hit02.mp3.flac")?,
             audio::Source::new(ctx, "/sounds/hit03.mp3.flac")?,
         ];
+
+        let tree_sprite = graphics::Image::new(ctx, "/sprites/tree.png")?;
 
         let s = MainState {
             frames: 0,
@@ -69,13 +75,19 @@ impl MainState {
             title,
             title_img: main_img,
             title_text,
+            transition_sound,
             builder_state: BuilderState::new(
                 get_heads(ctx),
                 get_bodies(ctx),
                 get_arms(ctx),
                 get_legs(ctx),
             ),
-            attack_state: AttackState::new(get_human_sprites(ctx), gunshot_sound, hit_sounds),
+            attack_state: AttackState::new(
+                get_human_sprites(ctx),
+                gunshot_sound,
+                hit_sounds,
+                tree_sprite,
+            ),
             day: 1,
             won: false,
         };
@@ -97,7 +109,7 @@ impl event::EventHandler for MainState {
         match self.state {
             ScreenState::NightAttack => {
                 if let Some(check_win) = self.attack_state.update_state() {
-                    if check_win && self.day == 2 {
+                    if check_win && self.day == 5 {
                         self.won = true;
                         self.switch_state(ScreenState::EndGame);
                     } else if !check_win {
@@ -105,6 +117,9 @@ impl event::EventHandler for MainState {
                     } else {
                         // move on to next day
                         self.day += 1;
+                        if let Err(error) = self.transition_sound.play() {
+                            eprintln!("{}", error);
+                        }
                         self.switch_state(ScreenState::MonsterCreation);
                     }
                 }
@@ -171,14 +186,14 @@ impl event::EventHandler for MainState {
                         text: "You won!".to_string(),
                         color: Some(graphics::Color::from_rgb(0, 255, 0)),
                         font: Some(self.font),
-                        scale: Some(graphics::Scale { x: 20.0, y: 20.0 }),
+                        scale: Some(graphics::Scale { x: 35.0, y: 35.0 }),
                     })
                 } else {
                     graphics::Text::new(graphics::TextFragment {
                         text: "All your monsters died!".to_string(),
                         color: Some(graphics::Color::from_rgb(255, 0, 0)),
                         font: Some(self.font),
-                        scale: Some(graphics::Scale { x: 20.0, y: 20.0 }),
+                        scale: Some(graphics::Scale { x: 35.0, y: 35.0 }),
                     })
                 };
                 let title_text_dest_point = mint::Point2 {
@@ -207,7 +222,12 @@ impl event::EventHandler for MainState {
     ) {
         match self.state {
             ScreenState::MainMenu => match keycode {
-                KeyCode::Return => self.switch_state(ScreenState::MonsterCreation),
+                KeyCode::Return => {
+                    if let Err(error) = self.transition_sound.play() {
+                        eprintln!("{}", error);
+                    }
+                    self.switch_state(ScreenState::MonsterCreation);
+                },
                 KeyCode::Escape => event::quit(ctx),
                 _ => (),
             },
@@ -222,6 +242,7 @@ impl event::EventHandler for MainState {
                         self.attack_state.add_monster(head, body, arms, legs);
 
                         self.attack_state.generate_humans(self.day);
+                        self.attack_state.generate_scenery();
                         self.switch_state(ScreenState::NightAttack);
                     }
                 }
@@ -237,6 +258,10 @@ impl event::EventHandler for MainState {
                 _ => (),
             },
             ScreenState::EndGame => match keycode {
+                KeyCode::Return => {
+                    self.switch_state(ScreenState::MainMenu);
+                    self.day = 1;
+                },
                 KeyCode::Escape => event::quit(ctx),
                 _ => (),
             },
