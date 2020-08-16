@@ -187,7 +187,7 @@ impl AttackState {
 
     pub fn generate_humans(&mut self, day: u16) {
         self.humans.clear();
-        for i in 0..day {
+        for i in 1..(day+1) {
             let rnggen = &mut self.thread_rng;
             let new_pos = mint::Point2 {
                 x: SCREEN_SIZE.0 - 32.0,
@@ -196,10 +196,10 @@ impl AttackState {
             self.humans.push(Human::new(
                 rnggen.gen_range(0, self.human_sprites.len()), // index
                 new_pos,
-                rnggen.gen_range(2.0, (i+2) as f32*2.0), // speed
-                rnggen.gen_range(50.0, (i+2) as f32*50.0), // range
-                rnggen.gen_range(20.0, (i+2) as f32*20.0), // hp
-                rnggen.gen_range(10.0, (i+2) as f32*10.0), // damage
+                rnggen.gen_range(2.0, i as f32*2.1), // speed
+                rnggen.gen_range(50.0, i as f32*50.1), // range
+                rnggen.gen_range(20.0, i as f32*20.1), // hp
+                rnggen.gen_range(10.0, i as f32*10.1), // damage
             ));
         }
     }
